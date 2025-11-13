@@ -121,6 +121,13 @@
             margin-top: 20px;
         }
         
+        .special-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
         button {
             background: #4caf50;
             color: white;
@@ -150,6 +157,22 @@
         
         button.export-btn:hover {
             background: #e68900;
+        }
+        
+        button.new-sheet-btn {
+            background: #e74c3c;
+        }
+        
+        button.new-sheet-btn:hover {
+            background: #c0392b;
+        }
+        
+        button.backup-btn {
+            background: #9b59b6;
+        }
+        
+        button.backup-btn:hover {
+            background: #8e44ad;
         }
         
         #itemsList {
@@ -204,6 +227,12 @@
             border: 1px solid #f5c6cb;
         }
         
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
         .save-status {
             text-align: center;
             font-size: 0.8rem;
@@ -222,6 +251,57 @@
             justify-content: center;
             font-size: 0.7rem;
             margin-right: 5px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .modal-buttons button {
+            padding: 10px 20px;
+            flex: 1;
+        }
+
+        .confirm-btn {
+            background: #e74c3c;
+        }
+
+        .confirm-btn:hover {
+            background: #c0392b;
+        }
+
+        .cancel-btn {
+            background: #95a5a6;
+        }
+
+        .cancel-btn:hover {
+            background: #7f8c8d;
         }
     </style>
 </head>
@@ -261,13 +341,23 @@
                     <button onclick="cancelAddItem()" style="background: #6c757d;">❌ إلغاء</button>
                 </div>
             </div>
+
+            <!-- الأزرار الخاصة -->
+            <div class="special-buttons">
+                <button class="new-sheet-btn" onclick="showNewSheetModal()">
+                    🆕 بدء شيت جديد
+                </button>
+                <button class="export-btn" onclick="exportToExcel()">
+                    📊 تصدير Excel
+                </button>
+            </div>
             
             <!-- أزرار التحكم -->
             <div class="buttons-grid">
                 <button class="scan-btn" onclick="startScanner()" id="startScannerBtn">📷 بدء المسح</button>
-                <button class="export-btn" onclick="exportToExcel()">📊 تصدير Excel</button>
-                <button onclick="exportBackup()">💾 نسخة احتياطية</button>
+                <button class="backup-btn" onclick="exportBackup()">💾 نسخة احتياطية</button>
                 <button onclick="importBackup()">📥 استيراد بيانات</button>
+                <button onclick="clearAllData()" style="background: #95a5a6;">🗑️ مسح الكل</button>
             </div>
             
             <div class="save-status" id="saveStatus">
@@ -277,6 +367,22 @@
             <!-- قائمة الأصناف -->
             <div id="itemsList">
                 <div class="empty-state">📝 لا توجد عمليات مسح مضافة بعد</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة التحذير -->
+    <div id="warningModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ تحذير!</h3>
+            <p style="margin-bottom: 20px; line-height: 1.5;">
+                سيتم مسح جميع البيانات الحالية (<span id="modalItemsCount">0</span> عملية مسح) 
+                ولا يمكن استرجاعها مرة أخرى. 
+                تأكد من أنك قمت بتصدير Excel إذا كنت تحتاج البيانات.
+            </p>
+            <div class="modal-buttons">
+                <button class="confirm-btn" onclick="startNewSheet()">نعم، ابدأ شيت جديد</button>
+                <button class="cancel-btn" onclick="hideNewSheetModal()">إلغاء</button>
             </div>
         </div>
     </div>
@@ -444,13 +550,11 @@
                 return;
             }
             
-            // === التعديل هنا: كل عملية مسح تسجل كمدخل مستقل ===
             // إضافة مدخل جديد تماماً لكل عملية مسح
             const newItem = {
                 name: itemName,
                 quantity: parseInt(quantity),
                 timestamp: new Date().toLocaleString('ar-EG'),
-                // إضافة معرف فريد لكل عملية
                 id: Date.now() + Math.random()
             };
             
@@ -547,6 +651,54 @@
                     updateTotalCount();
                     showStatusMessage(`🗑️ تم حذف العملية`, 'success');
                 }
+            }
+        }
+
+        // === الوظائف الجديدة ===
+        
+        // عرض نافذة التحذير
+        function showNewSheetModal() {
+            if (items.length === 0) {
+                startNewSheet(); // إذا مفيش بيانات، ابدأ مباشرة
+                return;
+            }
+            
+            document.getElementById('modalItemsCount').textContent = items.length;
+            document.getElementById('warningModal').style.display = 'flex';
+        }
+
+        // إخفاء نافذة التحذير
+        function hideNewSheetModal() {
+            document.getElementById('warningModal').style.display = 'none';
+        }
+
+        // بدء شيت جديد
+        function startNewSheet() {
+            // مسح جميع البيانات
+            items = [];
+            saveItemsToStorage();
+            updateItemsList();
+            updateSaveStatus();
+            updateTotalCount();
+            hideNewSheetModal();
+            
+            showStatusMessage('🆕 تم بدء شيت جديد بنجاح', 'success');
+        }
+
+        // مسح جميع البيانات (بدون تحذير)
+        function clearAllData() {
+            if (items.length === 0) {
+                showStatusMessage('❌ لا توجد بيانات لمسحها', 'error');
+                return;
+            }
+            
+            if (confirm(`هل تريد مسح جميع البيانات (${items.length} عملية مسح)؟`)) {
+                items = [];
+                saveItemsToStorage();
+                updateItemsList();
+                updateSaveStatus();
+                updateTotalCount();
+                showStatusMessage('🗑️ تم مسح جميع البيانات', 'success');
             }
         }
 
