@@ -83,6 +83,11 @@
             border-radius: 10px;
             margin-bottom: 20px;
             border: 1px solid #e2e8f0;
+            display: none;
+        }
+        
+        #itemForm.active {
+            display: block;
         }
         
         .form-group {
@@ -199,20 +204,6 @@
             border: 1px solid #f5c6cb;
         }
         
-        .manual-section {
-            background: #e8f4fd;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 10px 0;
-            border: 2px dashed #3498db;
-        }
-        
-        .manual-section h3 {
-            color: #2980b9;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        
         .save-status {
             text-align: center;
             font-size: 0.8rem;
@@ -227,7 +218,7 @@
             <h1>نظام جرد المخزون - مسح QR</h1>
             <div class="stats">
                 <span>عدد الأصناف: <span id="itemsCount">0</span></span>
-                <span>الهدف: <span id="targetCount">20</span></span>
+                <span>المسجلين: <span id="totalCount">0</span></span>
             </div>
         </header>
         
@@ -241,18 +232,6 @@
                 </div>
             </div>
             
-            <!-- قسم الإدخال اليدوي -->
-            <div class="manual-section">
-                <h3>الإدخال اليدوي</h3>
-                <div class="form-group">
-                    <input type="text" id="manualItemName" placeholder="أدخل اسم الصنف يدوياً">
-                </div>
-                <div class="form-group">
-                    <input type="number" id="manualQuantity" placeholder="الكمية" value="1" min="1">
-                </div>
-                <button onclick="addManualItem()" style="background: #9b59b6;">إضافة يدوياً</button>
-            </div>
-            
             <!-- نموذج إدخال البيانات -->
             <div id="itemForm">
                 <div class="form-group">
@@ -261,7 +240,7 @@
                 </div>
                 <div class="form-group">
                     <label for="quantity">الكمية:</label>
-                    <input type="number" id="quantity" placeholder="أدخل الكمية" value="1" min="1">
+                    <input type="number" id="quantity" placeholder="أدخل الكمية" min="1">
                 </div>
                 <button onclick="addItem()">إضافة الصنف</button>
                 <button onclick="cancelAddItem()" style="background: #6c757d;">إلغاء</button>
@@ -293,10 +272,9 @@
         let items = [];
         let html5QrCode = null;
         let currentQRCode = '';
-        const targetCount = 20;
         let isScanning = false;
 
-        // === نظام QR Code من الكود السابق ===
+        // === نظام QR Code ===
         function showStatusMessage(message, type) {
             const statusElement = document.getElementById('statusMessage');
             statusElement.textContent = message;
@@ -418,7 +396,7 @@
 
         // === نظام الجرد ===
         function initializeApp() {
-            document.getElementById('targetCount').textContent = targetCount;
+            updateTotalCount();
             loadItemsFromStorage();
             updateItemsList();
             updateSaveStatus();
@@ -427,27 +405,10 @@
             document.getElementById('fileInput').addEventListener('change', handleFileImport);
         }
 
-        // إضافة صنف يدوياً
-        function addManualItem() {
-            const itemName = document.getElementById('manualItemName').value.trim();
-            const quantity = document.getElementById('manualQuantity').value;
-            
-            if (!itemName) {
-                showStatusMessage('يرجى إدخال اسم الصنف', 'error');
-                return;
-            }
-            
-            if (!quantity || quantity < 1) {
-                showStatusMessage('يرجى إدخال كمية صحيحة', 'error');
-                return;
-            }
-            
-            document.getElementById('itemName').value = itemName;
-            document.getElementById('quantity').value = quantity;
-            document.getElementById('manualItemName').value = '';
-            document.getElementById('manualQuantity').value = '1';
-            
-            showStatusMessage('تم تعبئة البيانات جاهزة للإضافة', 'success');
+        // تحديث العدد الكلي
+        function updateTotalCount() {
+            const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('totalCount').textContent = totalCount;
         }
 
         // إضافة صنف من المسح
@@ -456,12 +417,13 @@
             const quantity = document.getElementById('quantity').value;
             
             if (!itemName) {
-                showStatusMessage('يرجى مسح كود QR أو إدخال اسم الصنف', 'error');
+                showStatusMessage('يرجى مسح كود QR أولاً', 'error');
                 return;
             }
             
             if (!quantity || quantity < 1) {
                 showStatusMessage('يرجى إدخال كمية صحيحة', 'error');
+                document.getElementById('quantity').focus();
                 return;
             }
             
@@ -487,19 +449,17 @@
             saveItemsToStorage();
             updateItemsList();
             updateSaveStatus();
+            updateTotalCount();
             
             // إعادة التعيين
             document.getElementById('itemName').value = '';
-            document.getElementById('quantity').value = '1';
-            
-            // التحقق من الهدف
-            checkTargetReached();
+            document.getElementById('quantity').value = '';
         }
 
         // إلغاء الإضافة
         function cancelAddItem() {
             document.getElementById('itemName').value = '';
-            document.getElementById('quantity').value = '1';
+            document.getElementById('quantity').value = '';
             showStatusMessage('تم الإلغاء', 'success');
         }
 
@@ -540,18 +500,8 @@
                 saveItemsToStorage();
                 updateItemsList();
                 updateSaveStatus();
+                updateTotalCount();
                 showStatusMessage(`تم حذف ${itemName}`, 'success');
-            }
-        }
-
-        // التحقق من الوصول للهدف
-        function checkTargetReached() {
-            if (items.length >= targetCount) {
-                setTimeout(() => {
-                    if (confirm(`🎉 تهانينا! وصلت إلى ${targetCount} صنف. هل تريد تصدير Excel الآن؟`)) {
-                        exportToExcel();
-                    }
-                }, 500);
             }
         }
 
@@ -623,6 +573,7 @@
                             saveItemsToStorage();
                             updateItemsList();
                             updateSaveStatus();
+                            updateTotalCount();
                             showStatusMessage(`تم استيراد ${items.length} صنف بنجاح`, 'success');
                         }
                     } else {
