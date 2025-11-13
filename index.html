@@ -234,33 +234,36 @@
             
             <!-- نموذج إدخال البيانات -->
             <div id="itemForm">
+                <h3 style="text-align: center; margin-bottom: 20px; color: #2d3748;">إدخال الكمية</h3>
                 <div class="form-group">
                     <label for="itemName">اسم الصنف:</label>
                     <input type="text" id="itemName" class="item-code" readonly placeholder="سيظهر هنا بعد المسح">
                 </div>
                 <div class="form-group">
                     <label for="quantity">الكمية:</label>
-                    <input type="number" id="quantity" placeholder="أدخل الكمية" min="1">
+                    <input type="number" id="quantity" placeholder="أدخل الكمية هنا" min="1">
                 </div>
-                <button onclick="addItem()">إضافة الصنف</button>
-                <button onclick="cancelAddItem()" style="background: #6c757d;">إلغاء</button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button onclick="addItem()">✅ إضافة الصنف</button>
+                    <button onclick="cancelAddItem()" style="background: #6c757d;">❌ إلغاء</button>
+                </div>
             </div>
             
             <!-- أزرار التحكم -->
             <div class="buttons-grid">
-                <button class="scan-btn" onclick="startScanner()" id="startScannerBtn">بدء المسح</button>
-                <button class="export-btn" onclick="exportToExcel()">تصدير Excel</button>
-                <button onclick="exportBackup()">نسخة احتياطية</button>
-                <button onclick="importBackup()">استيراد بيانات</button>
+                <button class="scan-btn" onclick="startScanner()" id="startScannerBtn">📷 بدء المسح</button>
+                <button class="export-btn" onclick="exportToExcel()">📊 تصدير Excel</button>
+                <button onclick="exportBackup()">💾 نسخة احتياطية</button>
+                <button onclick="importBackup()">📥 استيراد بيانات</button>
             </div>
             
             <div class="save-status" id="saveStatus">
-                آخر حفظ: <span id="lastSaveTime">لم يتم الحفظ بعد</span>
+                💾 آخر حفظ: <span id="lastSaveTime">لم يتم الحفظ بعد</span>
             </div>
             
             <!-- قائمة الأصناف -->
             <div id="itemsList">
-                <div class="empty-state">لا توجد أصناف مضافة بعد</div>
+                <div class="empty-state">📝 لا توجد أصناف مضافة بعد</div>
             </div>
         </div>
     </div>
@@ -291,10 +294,11 @@
             
             // إيقاف المسح تلقائياً بعد النجاح
             stopScanner().then(() => {
-                // تعبئة الحقل تلقائياً
+                // تعبئة الحقل تلقائياً وإظهار النموذج
                 document.getElementById('itemName').value = decodedText;
+                document.getElementById('itemForm').classList.add('active');
                 document.getElementById('quantity').focus();
-                showStatusMessage(`تم مسح الكود بنجاح: ${decodedText}`, 'success');
+                showStatusMessage(`✅ تم مسح الكود بنجاح: ${decodedText}`, 'success');
             });
         }
 
@@ -312,7 +316,7 @@
             const readerElement = document.getElementById('reader');
             
             startScannerBtn.disabled = true;
-            startScannerBtn.textContent = 'جاري التشغيل...';
+            startScannerBtn.textContent = '⏳ جاري التشغيل...';
             readerElement.classList.add('active');
 
             try {
@@ -349,15 +353,15 @@
                 );
                 
                 isScanning = true;
-                startScannerBtn.textContent = 'إيقاف المسح';
+                startScannerBtn.textContent = '🛑 إيقاف المسح';
                 startScannerBtn.disabled = false;
                 
-                showStatusMessage('الكاميرا تعمل - وجه نحو QR Code', 'success');
+                showStatusMessage('📷 الكاميرا تعمل - وجه نحو QR Code', 'success');
                 
             } catch (error) {
                 console.error('خطأ في تشغيل الكاميرا:', error);
                 
-                let errorMessage = 'خطأ في تشغيل الكاميرا: ';
+                let errorMessage = '❌ خطأ في تشغيل الكاميرا: ';
                 if (error.message.includes('Permission')) {
                     errorMessage = '⛔ الرجاء السماح باستخدام الكاميرا';
                 } else if (error.message.includes('NotFound')) {
@@ -391,7 +395,7 @@
             
             readerElement.classList.remove('active');
             startScannerBtn.disabled = false;
-            startScannerBtn.textContent = 'بدء المسح';
+            startScannerBtn.textContent = '📷 بدء المسح';
         }
 
         // === نظام الجرد ===
@@ -417,12 +421,12 @@
             const quantity = document.getElementById('quantity').value;
             
             if (!itemName) {
-                showStatusMessage('يرجى مسح كود QR أولاً', 'error');
+                showStatusMessage('❌ يرجى مسح كود QR أولاً', 'error');
                 return;
             }
             
             if (!quantity || quantity < 1) {
-                showStatusMessage('يرجى إدخال كمية صحيحة', 'error');
+                showStatusMessage('❌ يرجى إدخال كمية صحيحة', 'error');
                 document.getElementById('quantity').focus();
                 return;
             }
@@ -434,7 +438,7 @@
                 // تحديث الكمية إذا الصنف موجود
                 items[existingIndex].quantity += parseInt(quantity);
                 items[existingIndex].timestamp = new Date().toLocaleString('ar-EG');
-                showStatusMessage(`تم تحديث ${itemName} - الكمية الجديدة: ${items[existingIndex].quantity}`, 'success');
+                showStatusMessage(`✅ تم تحديث ${itemName} - الكمية الجديدة: ${items[existingIndex].quantity}`, 'success');
             } else {
                 // إضافة صنف جديد
                 items.push({
@@ -442,7 +446,7 @@
                     quantity: parseInt(quantity),
                     timestamp: new Date().toLocaleString('ar-EG')
                 });
-                showStatusMessage(`تم إضافة ${itemName} بنجاح`, 'success');
+                showStatusMessage(`✅ تم إضافة ${itemName} بنجاح`, 'success');
             }
             
             // حفظ وتحديث
@@ -451,16 +455,18 @@
             updateSaveStatus();
             updateTotalCount();
             
-            // إعادة التعيين
+            // إعادة التعيين وإخفاء النموذج
             document.getElementById('itemName').value = '';
             document.getElementById('quantity').value = '';
+            document.getElementById('itemForm').classList.remove('active');
         }
 
         // إلغاء الإضافة
         function cancelAddItem() {
             document.getElementById('itemName').value = '';
             document.getElementById('quantity').value = '';
-            showStatusMessage('تم الإلغاء', 'success');
+            document.getElementById('itemForm').classList.remove('active');
+            showStatusMessage('❌ تم الإلغاء', 'success');
         }
 
         // تحديث قائمة الأصناف
@@ -471,7 +477,7 @@
             itemsCount.textContent = items.length;
             
             if (items.length === 0) {
-                itemsList.innerHTML = '<div class="empty-state">لا توجد أصناف مضافة بعد</div>';
+                itemsList.innerHTML = '<div class="empty-state">📝 لا توجد أصناف مضافة بعد</div>';
                 return;
             }
             
@@ -484,7 +490,7 @@
                             <div>الكمية: ${item.quantity}</div>
                             <small>${item.timestamp}</small>
                         </div>
-                        <button class="delete-btn" onclick="deleteItem(${index})">حذف</button>
+                        <button class="delete-btn" onclick="deleteItem(${index})">🗑️ حذف</button>
                     </div>
                 `;
             });
@@ -501,14 +507,14 @@
                 updateItemsList();
                 updateSaveStatus();
                 updateTotalCount();
-                showStatusMessage(`تم حذف ${itemName}`, 'success');
+                showStatusMessage(`🗑️ تم حذف ${itemName}`, 'success');
             }
         }
 
         // تصدير Excel
         function exportToExcel() {
             if (items.length === 0) {
-                showStatusMessage('لا توجد بيانات للتصدير', 'error');
+                showStatusMessage('❌ لا توجد بيانات للتصدير', 'error');
                 return;
             }
             
@@ -528,17 +534,17 @@
                 const date = new Date().toISOString().split('T')[0];
                 XLSX.writeFile(wb, `جرد_المخزون_${date}.xlsx`);
                 
-                showStatusMessage('تم تصدير البيانات بنجاح!', 'success');
+                showStatusMessage('📊 تم تصدير البيانات بنجاح!', 'success');
             } catch (error) {
                 console.error('خطأ في التصدير:', error);
-                showStatusMessage('حدث خطأ أثناء التصدير', 'error');
+                showStatusMessage('❌ حدث خطأ أثناء التصدير', 'error');
             }
         }
 
         // تصدير نسخة احتياطية
         function exportBackup() {
             if (items.length === 0) {
-                showStatusMessage('لا توجد بيانات للتصدير', 'error');
+                showStatusMessage('❌ لا توجد بيانات للتصدير', 'error');
                 return;
             }
             
@@ -550,7 +556,7 @@
             link.download = `نسخة_احتياطية_${new Date().toISOString().split('T')[0]}.json`;
             link.click();
             
-            showStatusMessage('تم تصدير النسخة الاحتياطية!', 'success');
+            showStatusMessage('💾 تم تصدير النسخة الاحتياطية!', 'success');
         }
 
         // استيراد بيانات
@@ -574,13 +580,13 @@
                             updateItemsList();
                             updateSaveStatus();
                             updateTotalCount();
-                            showStatusMessage(`تم استيراد ${items.length} صنف بنجاح`, 'success');
+                            showStatusMessage(`📥 تم استيراد ${items.length} صنف بنجاح`, 'success');
                         }
                     } else {
-                        alert('ملف غير صحيح');
+                        alert('❌ ملف غير صحيح');
                     }
                 } catch (error) {
-                    alert('خطأ في قراءة الملف: ' + error.message);
+                    alert('❌ خطأ في قراءة الملف: ' + error.message);
                 }
             };
             reader.readAsText(file);
