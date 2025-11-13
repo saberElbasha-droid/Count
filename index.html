@@ -3,12 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق جرد المخزون - مع حفظ البيانات</title>
+    <title>تطبيق جرد المخزون</title>
     
-    <!-- استخدام CDN بديل لمكتبة QR -->
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
+    <!-- تحميل مكتبة QR Scanner أولاً -->
+    <script>
+        // دالة لتحميل المكتبات بشكل متسلسل
+        function loadScript(src, integrity, crossorigin) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                if (integrity) script.integrity = integrity;
+                if (crossorigin) script.crossOrigin = crossorigin;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // تحميل جميع المكتبات بشكل متسلسل
+        async function loadAllLibraries() {
+            try {
+                // محاولة CDN الأولى
+                await loadScript(
+                    'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js',
+                    'sha512-1W2Lr2TZ3w+DXBDjQJ5oyqCoy0np4WbWfUy0c0k2UQN1+OKnMV6kU9rFyPNy0Jsy4J1ZyZqyF1eOq1S2D4AqA==',
+                    'anonymous'
+                );
+                console.log('✅ مكتبة QR محملة من CDN.jsdelivr');
+            } catch (error) {
+                console.log('❌ فشل CDN الأول، جاري المحاولة بالبديل...');
+                try {
+                    // محاولة CDN الثانية
+                    await loadScript(
+                        'https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js'
+                    );
+                    console.log('✅ مكتبة QR محملة من unpkg');
+                } catch (error2) {
+                    console.log('❌ فشل CDN الثاني، جاري المحاولة بالبديل الثالث...');
+                    try {
+                        // محاولة CDN الثالثة
+                        await loadScript(
+                            'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js',
+                            'sha512-1W2Lr2TZ3w+DXBDjQJ5oyqCoy0np4WbWfUy0c0k2UQN1+OKnMV6kU9rFyPNy0Jsy4J1ZyZqyF1eOq1S2D4AqA==',
+                            'anonymous'
+                        );
+                        console.log('✅ مكتبة QR محملة من cdnjs');
+                    } catch (error3) {
+                        console.error('❌ فشل جميع محاولات تحميل مكتبة QR');
+                        document.getElementById('cameraStatus').innerHTML = 
+                            '❌ مشكلة في الشبكة. الرجاء التأكد من اتصال الإنترنت وتحديث الصفحة';
+                    }
+                }
+            }
+
+            try {
+                // تحميل مكتبة Excel
+                await loadScript(
+                    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+                    'sha512-r-6UfM2qKXDCP0ReaYrLi1QcL1+lgC1wyj3kYLrNA1VURuJ8K1MozLv4Zt6FwYLjI7fDgJUa5wJ7wSbWvGl3gg==',
+                    'anonymous'
+                );
+                console.log('✅ مكتبة Excel محملة');
+            } catch (error) {
+                console.error('❌ فشل تحميل مكتبة Excel');
+            }
+        }
+
+        // بدء تحميل المكتبات عند تحميل الصفحة
+        window.addEventListener('DOMContentLoaded', loadAllLibraries);
+    </script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -204,10 +268,11 @@
         
         .camera-status {
             text-align: center;
-            padding: 10px;
+            padding: 15px;
             margin: 10px 0;
-            border-radius: 5px;
+            border-radius: 8px;
             font-weight: bold;
+            font-size: 0.9rem;
         }
         
         .camera-status.error {
@@ -228,6 +293,21 @@
             border: 1px solid #ffd54f;
         }
         
+        .camera-status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #bbdefb;
+        }
+        
+        .refresh-btn {
+            background: #ff5722;
+            margin-top: 10px;
+        }
+        
+        .refresh-btn:hover {
+            background: #e64a19;
+        }
+
         @media (max-width: 600px) {
             body {
                 padding: 10px;
@@ -250,7 +330,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>تطبيق جرد المخزون - مع حفظ البيانات</h1>
+            <h1>تطبيق جرد المخزون</h1>
             <div class="stats">
                 <span>عدد الأصناف: <span id="itemsCount">0</span></span>
                 <span>الهدف: <span id="targetCount">20</span></span>
@@ -258,8 +338,8 @@
         </header>
         
         <div class="main-content">
-            <div id="cameraStatus" class="camera-status warning">
-                ⚠️ جاري تحميل التطبيق...
+            <div id="cameraStatus" class="camera-status info">
+                ⏳ جاري تحميل التطبيق والمكتبات المطلوبة...
             </div>
             
             <div id="reader" class="hidden">
@@ -283,11 +363,15 @@
             </div>
             
             <div class="buttons-grid">
-                <button id="startScannerBtn" onclick="startScanner()">بدء المسح</button>
+                <button id="startScannerBtn" onclick="startScanner()" disabled>⏳ جاري التحميل...</button>
                 <button class="export" onclick="exportToExcel()">تصدير Excel</button>
                 <button class="backup" onclick="exportBackup()">نسخة احتياطية</button>
                 <button onclick="document.getElementById('fileInput').click()">استيراد بيانات</button>
             </div>
+
+            <button id="refreshLibsBtn" class="refresh-btn hidden" onclick="refreshLibraries()">
+                🔄 إعادة تحميل المكتبات
+            </button>
             
             <div class="save-status" id="saveStatus">
                 آخر حفظ: <span id="lastSaveTime">لم يتم الحفظ بعد</span>
