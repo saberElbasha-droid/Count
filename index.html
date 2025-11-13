@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تطبيق جرد المخزون</title>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+    <title>تطبيق جرد المخزون - مع حفظ البيانات</title>
+    
+    <!-- استخدام CDN بديل لمكتبة QR -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <style>
         * {
             box-sizing: border-box;
@@ -72,10 +75,6 @@
         
         #reader.hidden {
             display: none;
-        }
-        
-        #reader.active {
-            border-color: #4caf50;
         }
         
         .scanner-placeholder {
@@ -208,6 +207,7 @@
             padding: 10px;
             margin: 10px 0;
             border-radius: 5px;
+            font-weight: bold;
         }
         
         .camera-status.error {
@@ -220,6 +220,12 @@
             background: #efe;
             color: #363;
             border: 1px solid #cfc;
+        }
+        
+        .camera-status.warning {
+            background: #ffecb3;
+            color: #7d6608;
+            border: 1px solid #ffd54f;
         }
         
         @media (max-width: 600px) {
@@ -252,7 +258,9 @@
         </header>
         
         <div class="main-content">
-            <div id="cameraStatus"></div>
+            <div id="cameraStatus" class="camera-status warning">
+                ⚠️ جاري تحميل التطبيق...
+            </div>
             
             <div id="reader" class="hidden">
                 <div class="scanner-placeholder" id="scannerPlaceholder">
