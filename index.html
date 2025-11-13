@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>????? ??? ??????? - ?? ??? ????????</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: #4a5568;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: #2d3748;
+            padding: 10px;
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        .main-content {
+            padding: 20px;
+        }
+        
+        #reader {
+            width: 100%;
+            height: 300px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #reader.hidden {
+            display: none;
+        }
+        
+        #itemForm {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        #itemForm.hidden {
+            display: none;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        button {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button.export {
+            background: #2196f3;
+        }
+        
+        button.export:hover {
+            background: #0b7dda;
+        }
+        
+        button.backup {
+            background: #ff9800;
+        }
+        
+        button.backup:hover {
+            background: #e68900;
+        }
+        
+        #itemsList {
+            margin-top: 20px;
+        }
+        
+        .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+        }
+        
+        .item:nth-child(even) {
+            background: #f7fafc;
+        }
+        
+        .item-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .delete-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #718096;
+        }
+        
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .save-status {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #718096;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            header h1 {
+                font-size: 1.3rem;
+            }
+            
+            #reader {
+                height: 250px;
+            }
+            
+            .buttons-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>????? ??? ??????? - ?? ??? ????????</h1>
+            <div class="stats">
+                <span>??? ???????: <span id="itemsCount">0</span></span>
+                <span>?????: <span id="targetCount">20</span></span>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <div id="reader"></div>
+            
+            <div id="itemForm" class="hidden">
+                <h3>????? ??????</h3>
+                <div class="form-group">
+                    <label for="itemName">??? ?????:</label>
+                    <input type="text" id="itemName" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="quantityInput">??????:</label>
+                    <input type="number" id="quantityInput" placeholder="???? ??????" min="1">
+                </div>
+                <button onclick="addItem()">????? ?????</button>
+            </div>
+            
+            <div class="buttons-grid">
+                <button onclick="startScanner()">??? ?????</button>
+                <button class="export" onclick="exportToExcel()">????? Excel</button>
+                <button class="backup" onclick="exportBackup()">???? ????????</button>
+                <button onclick="document.getElementById('fileInput').click()">??????? ??????</button>
+            </div>
+            
+            <div class="save-status" id="saveStatus">
+                ??? ???: <span id="lastSaveTime">?? ??? ????? ???</span>
+            </div>
+            
+            <div id="itemsList">
+                <div class="empty-state">?? ???? ????? ????? ???</div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+
+    <script src="app.js"></script>
+</body>
+</html>
