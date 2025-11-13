@@ -210,6 +210,19 @@
             color: #718096;
             margin-top: 10px;
         }
+
+        .item-counter {
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -217,8 +230,8 @@
         <header>
             <h1>نظام جرد المخزون - مسح QR</h1>
             <div class="stats">
-                <span>عدد الأصناف: <span id="itemsCount">0</span></span>
-                <span>المسجلين: <span id="totalCount">0</span></span>
+                <span>عدد العمليات: <span id="itemsCount">0</span></span>
+                <span>إجمالي الكميات: <span id="totalCount">0</span></span>
             </div>
         </header>
         
@@ -263,7 +276,7 @@
             
             <!-- قائمة الأصناف -->
             <div id="itemsList">
-                <div class="empty-state">📝 لا توجد أصناف مضافة بعد</div>
+                <div class="empty-state">📝 لا توجد عمليات مسح مضافة بعد</div>
             </div>
         </div>
     </div>
@@ -431,23 +444,18 @@
                 return;
             }
             
-            // البحث عن الصنف إذا كان موجوداً
-            const existingIndex = items.findIndex(item => item.name === itemName);
+            // === التعديل هنا: كل عملية مسح تسجل كمدخل مستقل ===
+            // إضافة مدخل جديد تماماً لكل عملية مسح
+            const newItem = {
+                name: itemName,
+                quantity: parseInt(quantity),
+                timestamp: new Date().toLocaleString('ar-EG'),
+                // إضافة معرف فريد لكل عملية
+                id: Date.now() + Math.random()
+            };
             
-            if (existingIndex !== -1) {
-                // تحديث الكمية إذا الصنف موجود
-                items[existingIndex].quantity += parseInt(quantity);
-                items[existingIndex].timestamp = new Date().toLocaleString('ar-EG');
-                showStatusMessage(`✅ تم تحديث ${itemName} - الكمية الجديدة: ${items[existingIndex].quantity}`, 'success');
-            } else {
-                // إضافة صنف جديد
-                items.push({
-                    name: itemName,
-                    quantity: parseInt(quantity),
-                    timestamp: new Date().toLocaleString('ar-EG')
-                });
-                showStatusMessage(`✅ تم إضافة ${itemName} بنجاح`, 'success');
-            }
+            items.push(newItem);
+            showStatusMessage(`✅ تم تسجيل عملية مسح جديدة: ${itemName} - الكمية: ${quantity}`, 'success');
             
             // حفظ وتحديث
             saveItemsToStorage();
@@ -466,7 +474,7 @@
             document.getElementById('itemName').value = '';
             document.getElementById('quantity').value = '';
             document.getElementById('itemForm').classList.remove('active');
-            showStatusMessage('❌ تم الإلغاء', 'success');
+            showStatusMessage('❌ تم إلغاء العملية', 'success');
         }
 
         // تحديث قائمة الأصناف
@@ -477,37 +485,68 @@
             itemsCount.textContent = items.length;
             
             if (items.length === 0) {
-                itemsList.innerHTML = '<div class="empty-state">📝 لا توجد أصناف مضافة بعد</div>';
+                itemsList.innerHTML = '<div class="empty-state">📝 لا توجد عمليات مسح مضافة بعد</div>';
                 return;
             }
             
             let html = '';
-            items.forEach((item, index) => {
+            
+            // تجميع العمليات لنفس الأصناف لعرضها بشكل مرتب
+            const itemsByCode = {};
+            items.forEach(item => {
+                if (!itemsByCode[item.name]) {
+                    itemsByCode[item.name] = [];
+                }
+                itemsByCode[item.name].push(item);
+            });
+            
+            // عرض العمليات مجمعة حسب الكود
+            Object.keys(itemsByCode).forEach(itemName => {
+                const itemOperations = itemsByCode[itemName];
+                const totalForItem = itemOperations.reduce((sum, op) => sum + op.quantity, 0);
+                
                 html += `
-                    <div class="item">
-                        <div>
-                            <strong>${item.name}</strong>
-                            <div>الكمية: ${item.quantity}</div>
-                            <small>${item.timestamp}</small>
+                    <div style="background: #e8f4fd; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <strong>${itemName}</strong>
+                            <span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">
+                                إجمالي: ${totalForItem}
+                            </span>
                         </div>
-                        <button class="delete-btn" onclick="deleteItem(${index})">🗑️ حذف</button>
-                    </div>
                 `;
+                
+                itemOperations.forEach((item, index) => {
+                    html += `
+                        <div class="item">
+                            <div>
+                                <span class="item-counter">${index + 1}</span>
+                                <span>الكمية: ${item.quantity}</span>
+                                <div><small>${item.timestamp}</small></div>
+                            </div>
+                            <button class="delete-btn" onclick="deleteItem('${item.id}')">🗑️ حذف</button>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
             });
             
             itemsList.innerHTML = html;
         }
 
-        // حذف صنف
-        function deleteItem(index) {
-            const itemName = items[index].name;
-            if (confirm(`هل تريد حذف "${itemName}"؟`)) {
-                items.splice(index, 1);
-                saveItemsToStorage();
-                updateItemsList();
-                updateSaveStatus();
-                updateTotalCount();
-                showStatusMessage(`🗑️ تم حذف ${itemName}`, 'success');
+        // حذف عملية مسح
+        function deleteItem(itemId) {
+            const itemIndex = items.findIndex(item => item.id === itemId);
+            if (itemIndex !== -1) {
+                const itemName = items[itemIndex].name;
+                if (confirm(`هل تريد حذف عملية المسح هذه لـ "${itemName}"؟`)) {
+                    items.splice(itemIndex, 1);
+                    saveItemsToStorage();
+                    updateItemsList();
+                    updateSaveStatus();
+                    updateTotalCount();
+                    showStatusMessage(`🗑️ تم حذف العملية`, 'success');
+                }
             }
         }
 
@@ -529,10 +568,10 @@
                 
                 const ws = XLSX.utils.aoa_to_sheet(data);
                 const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'جرد المخزون');
+                XLSX.utils.book_append_sheet(wb, ws, 'سجل المسح');
                 
                 const date = new Date().toISOString().split('T')[0];
-                XLSX.writeFile(wb, `جرد_المخزون_${date}.xlsx`);
+                XLSX.writeFile(wb, `سجل_المسح_${date}.xlsx`);
                 
                 showStatusMessage('📊 تم تصدير البيانات بنجاح!', 'success');
             } catch (error) {
@@ -574,13 +613,13 @@
                 try {
                     const importedItems = JSON.parse(e.target.result);
                     if (Array.isArray(importedItems)) {
-                        if (confirm(`سيتم استبدال جميع البيانات الحالية بـ ${importedItems.length} صنف. هل أنت متأكد؟`)) {
+                        if (confirm(`سيتم استبدال جميع البيانات الحالية بـ ${importedItems.length} عملية مسح. هل أنت متأكد؟`)) {
                             items = importedItems;
                             saveItemsToStorage();
                             updateItemsList();
                             updateSaveStatus();
                             updateTotalCount();
-                            showStatusMessage(`📥 تم استيراد ${items.length} صنف بنجاح`, 'success');
+                            showStatusMessage(`📥 تم استيراد ${items.length} عملية مسح بنجاح`, 'success');
                         }
                     } else {
                         alert('❌ ملف غير صحيح');
