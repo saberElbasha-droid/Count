@@ -5,41 +5,85 @@ let currentQRCode = '';
 const targetCount = 20;
 let isScanning = false;
 
-// تهيئة التطبيق
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('جاري تهيئة التطبيق...');
+// تهيئة التطبيق بعد تحميل الصفحة بالكامل
+window.addEventListener('load', function() {
+    console.log('الصفحة محملة بالكامل، جاري تهيئة التطبيق...');
+    initializeApp();
+});
+
+function initializeApp() {
     document.getElementById('targetCount').textContent = targetCount;
     loadItemsFromStorage();
     updateItemsList();
     updateSaveStatus();
     
-    // اختبار تحميل المكتبات
-    testLibraries();
-});
+    // اختبار تحميل المكتبات بعد فترة بسيطة
+    setTimeout(checkLibraries, 1000);
+}
 
-// اختبار تحميل المكتبات
-function testLibraries() {
+// التحقق من تحميل المكتبات
+function checkLibraries() {
+    const cameraStatus = document.getElementById('cameraStatus');
+    
+    console.log('جاري فحص المكتبات...');
     console.log('Html5Qrcode:', typeof Html5Qrcode);
     console.log('XLSX:', typeof XLSX);
     
     if (typeof Html5Qrcode === 'undefined') {
-        showCameraStatus('⚠️ لم يتم تحميل مكتبة QR Scanner بشكل صحيح', 'error');
-    } else {
-        showCameraStatus('✅ المكتبات محملة بنجاح', 'success');
+        cameraStatus.innerHTML = '❌ مشكلة في تحميل مكتبة QR Scanner. جاري المحاولة مرة أخرى...';
+        cameraStatus.className = 'camera-status error';
+        
+        // محاولة إعادة تحميل المكتبة
+        setTimeout(reloadQRlibrary, 2000);
+        return;
     }
+    
+    if (typeof XLSX === 'undefined') {
+        cameraStatus.innerHTML = '⚠️ مشكلة في تحميل مكتبة Excel';
+        cameraStatus.className = 'camera-status warning';
+        return;
+    }
+    
+    cameraStatus.innerHTML = '✅ جميع المكتبات محملة بنجاح! يمكنك بدء المسح الآن';
+    cameraStatus.className = 'camera-status success';
+    
+    // إخفاء الرسالة بعد 3 ثواني
+    setTimeout(() => {
+        cameraStatus.innerHTML = '';
+        cameraStatus.className = 'camera-status';
+    }, 3000);
 }
 
-// عرض حالة الكاميرا
-function showCameraStatus(message, type) {
-    const statusDiv = document.getElementById('cameraStatus');
-    statusDiv.innerHTML = message;
-    statusDiv.className = `camera-status ${type}`;
+// إعادة تحميل مكتبة QR
+function reloadQRlibrary() {
+    const cameraStatus = document.getElementById('cameraStatus');
+    cameraStatus.innerHTML = '🔄 جاري إعادة تحميل المكتبة...';
+    cameraStatus.className = 'camera-status warning';
     
-    // إخفاء الرسالة بعد 5 ثواني
-    setTimeout(() => {
-        statusDiv.innerHTML = '';
-        statusDiv.className = 'camera-status';
-    }, 5000);
+    // إنشاء عنصر script جديد
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js';
+    script.integrity = 'sha512-1W2Lr2TZ3w+DXBDjQJ5oyqCoy0np4WbWfUy0c0k2UQN1+OKnMV6kU9rFyPNy0Jsy4J1ZyZqyF1eOq1S2D4AqA==';
+    script.crossOrigin = 'anonymous';
+    
+    script.onload = function() {
+        console.log('تم إعادة تحميل مكتبة QR بنجاح');
+        cameraStatus.innerHTML = '✅ تم تحميل المكتبة بنجاح! جاري التهيئة...';
+        cameraStatus.className = 'camera-status success';
+        
+        setTimeout(() => {
+            cameraStatus.innerHTML = '';
+            cameraStatus.className = 'camera-status';
+        }, 2000);
+    };
+    
+    script.onerror = function() {
+        console.error('فشل في إعادة تحميل المكتبة');
+        cameraStatus.innerHTML = '❌ فشل في تحميل المكتبة. الرجاء تحديث الصفحة';
+        cameraStatus.className = 'camera-status error';
+    };
+    
+    document.head.appendChild(script);
 }
 
 // بدء الماسح الضوئي
@@ -51,7 +95,17 @@ async function startScanner() {
         return;
     }
     
+    const cameraStatus = document.getElementById('cameraStatus');
     const startScannerBtn = document.getElementById('startScannerBtn');
+    
+    // التحقق مرة أخرى من تحميل المكتبة
+    if (typeof Html5Qrcode === 'undefined') {
+        cameraStatus.innerHTML = '❌ مكتبة QR غير محملة. جاري المحاولة...';
+        cameraStatus.className = 'camera-status error';
+        reloadQRlibrary();
+        return;
+    }
+    
     startScannerBtn.disabled = true;
     startScannerBtn.textContent = 'جاري التشغيل...';
     
@@ -61,25 +115,29 @@ async function startScanner() {
         const placeholder = document.getElementById('scannerPlaceholder');
         readerDiv.classList.remove('hidden');
         placeholder.textContent = 'جاري تهيئة الكاميرا...';
-        
-        // التأكد من تحميل المكتبة
-        if (typeof Html5Qrcode === 'undefined') {
-            throw new Error('مكتبة QR Scanner غير محملة');
-        }
+        placeholder.style.display = 'block';
         
         // الحصول على الكاميرات المتاحة
         const cameras = await Html5Qrcode.getCameras();
         console.log('الكاميرات المتاحة:', cameras);
         
         if (!cameras || cameras.length === 0) {
-            throw new Error('لم يتم العثور على كاميرات');
+            throw new Error('لم يتم العثور على كاميرات في الجهاز');
         }
+        
+        cameraStatus.innerHTML = `📷 تم العثور على ${cameras.length} كاميرا`;
+        cameraStatus.className = 'camera-status success';
         
         // استخدام الكاميرا الخلفية إذا متاحة
         let cameraId = cameras[0].id;
-        const backCamera = cameras.find(cam => cam.label.toLowerCase().includes('back'));
+        const backCamera = cameras.find(cam => 
+            cam.label.toLowerCase().includes('back') || 
+            cam.label.includes('2')
+        );
+        
         if (backCamera) {
             cameraId = backCamera.id;
+            console.log('Using back camera:', backCamera.label);
         }
         
         // تهيئة الماسح
@@ -101,26 +159,28 @@ async function startScanner() {
         startScannerBtn.textContent = 'إيقاف المسح';
         startScannerBtn.disabled = false;
         startScannerBtn.onclick = stopScanner;
-        readerDiv.classList.add('active');
         placeholder.style.display = 'none';
         
-        showCameraStatus('✅ الكاميرا تعمل بنجاح - وجه الكاميرا نحو QR code', 'success');
+        cameraStatus.innerHTML = '✅ الكاميرا تعمل بنجاح - وجه الكاميرا نحو QR code';
+        cameraStatus.className = 'camera-status success';
         
     } catch (error) {
         console.error('خطأ في تشغيل الماسح:', error);
         
         let errorMessage = 'تعذر تشغيل الكاميرا: ';
         if (error.message.includes('Permission')) {
-            errorMessage += 'الرجاء السماح باستخدام الكاميرا';
-        } else if (error.message.includes('cameras')) {
-            errorMessage += 'لم يتم العثور على كاميرات';
+            errorMessage = '⛔ الرجاء السماح باستخدام الكاميرا في المتصفح';
+        } else if (error.message.includes('cameras') || error.message.includes('not found')) {
+            errorMessage = '📵 لم يتم العثور على كاميرات في هذا الجهاز';
         } else if (error.message.includes('not loaded')) {
-            errorMessage += 'مكتبة المسح غير محملة';
+            errorMessage = '🔧 مكتبة المسح غير محملة. جاري المحاولة...';
+            reloadQRlibrary();
         } else {
             errorMessage += error.message;
         }
         
-        showCameraStatus(errorMessage, 'error');
+        cameraStatus.innerHTML = errorMessage;
+        cameraStatus.className = 'camera-status error';
         resetScannerButton();
     }
 }
@@ -139,11 +199,17 @@ async function stopScanner() {
         
         const readerDiv = document.getElementById('reader');
         readerDiv.classList.add('hidden');
-        readerDiv.classList.remove('active');
         
         resetScannerButton();
         
-        showCameraStatus('تم إيقاف الماسح الضوئي', 'success');
+        const cameraStatus = document.getElementById('cameraStatus');
+        cameraStatus.innerHTML = '⏹️ تم إيقاف الماسح الضوئي';
+        cameraStatus.className = 'camera-status success';
+        
+        setTimeout(() => {
+            cameraStatus.innerHTML = '';
+            cameraStatus.className = 'camera-status';
+        }, 2000);
         
     } catch (error) {
         console.error('خطأ في إيقاف الماسح:', error);
@@ -173,21 +239,30 @@ function onScanSuccess(decodedText, decodedResult) {
         document.getElementById('itemName').value = decodedText;
         document.getElementById('quantityInput').focus();
         
-        showCameraStatus(`✅ تم مسح: ${decodedText}`, 'success');
+        const cameraStatus = document.getElementById('cameraStatus');
+        cameraStatus.innerHTML = `✅ تم مسح: ${decodedText}`;
+        cameraStatus.className = 'camera-status success';
     });
 }
 
 // عند فشل المسح
 function onScanFailure(error) {
     // يتم تجاهل أخطاء المسح المستمرة
-    // console.log('فشل المسح:', error);
 }
 
 // إلغاء إضافة الصنف
 function cancelAddItem() {
     document.getElementById('itemForm').classList.add('hidden');
     document.getElementById('quantityInput').value = '';
-    showCameraStatus('تم إلغاء الإضافة', 'success');
+    
+    const cameraStatus = document.getElementById('cameraStatus');
+    cameraStatus.innerHTML = 'تم إلغاء الإضافة';
+    cameraStatus.className = 'camera-status warning';
+    
+    setTimeout(() => {
+        cameraStatus.innerHTML = '';
+        cameraStatus.className = 'camera-status';
+    }, 2000);
 }
 
 // إضافة صنف جديد
@@ -261,11 +336,20 @@ function updateItemsList() {
 // حذف صنف
 function deleteItem(index) {
     if (confirm('هل أنت متأكد من حذف هذا الصنف؟')) {
+        const itemName = items[index].name;
         items.splice(index, 1);
         saveItemsToStorage();
         updateItemsList();
         updateSaveStatus();
-        showCameraStatus('تم حذف الصنف', 'success');
+        
+        const cameraStatus = document.getElementById('cameraStatus');
+        cameraStatus.innerHTML = `🗑️ تم حذف ${itemName}`;
+        cameraStatus.className = 'camera-status warning';
+        
+        setTimeout(() => {
+            cameraStatus.innerHTML = '';
+            cameraStatus.className = 'camera-status';
+        }, 2000);
     }
 }
 
@@ -301,7 +385,10 @@ function exportToExcel() {
         const date = new Date().toISOString().split('T')[0];
         XLSX.writeFile(wb, `جرد_المخزون_${date}.xlsx`);
         
-        showCameraStatus('تم تصدير البيانات بنجاح!', 'success');
+        const cameraStatus = document.getElementById('cameraStatus');
+        cameraStatus.innerHTML = '📊 تم تصدير البيانات بنجاح!';
+        cameraStatus.className = 'camera-status success';
+        
     } catch (error) {
         console.error('خطأ في التصدير:', error);
         alert('حدث خطأ أثناء التصدير. يرجى المحاولة مرة أخرى.');
@@ -323,7 +410,9 @@ function exportBackup() {
     link.download = `نسخة_احتياطية_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     
-    showCameraStatus('تم تصدير النسخة الاحتياطية بنجاح!', 'success');
+    const cameraStatus = document.getElementById('cameraStatus');
+    cameraStatus.innerHTML = '💾 تم تصدير النسخة الاحتياطية!';
+    cameraStatus.className = 'camera-status success';
 }
 
 // استيراد نسخة احتياطية
@@ -341,7 +430,10 @@ function importBackup(event) {
                     saveItemsToStorage();
                     updateItemsList();
                     updateSaveStatus();
-                    showCameraStatus(`تم استيراد ${items.length} صنف بنجاح`, 'success');
+                    
+                    const cameraStatus = document.getElementById('cameraStatus');
+                    cameraStatus.innerHTML = `📥 تم استيراد ${items.length} صنف بنجاح`;
+                    cameraStatus.className = 'camera-status success';
                 }
             } else {
                 alert('ملف غير صحيح');
@@ -360,6 +452,8 @@ function updateSaveStatus() {
     if (lastSave) {
         const date = new Date(lastSave);
         document.getElementById('lastSaveTime').textContent = date.toLocaleString('ar-EG');
+    } else {
+        document.getElementById('lastSaveTime').textContent = 'لم يتم الحفظ بعد';
     }
 }
 
@@ -393,7 +487,7 @@ function loadItemsFromStorage() {
 
 // حفظ تلقائي عند إغلاق الصفحة
 window.addEventListener('beforeunload', function() {
-    if (isScanning) {
+    if (isScanning && html5QrCode) {
         stopScanner();
     }
     saveItemsToStorage();
